@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,20 +25,41 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Show repository files
-        run: |
-          pwd
-          ls -la
-
-      - name: Build Project
+      - name: Build project
         run: mvn --batch-mode clean package
 
-      - name: Show generated WAR
-        run: ls -la target
+      - name: Find generated WAR
+        id: war
+        shell: bash
+        run: |
+          WAR_FILE=$(find target -maxdepth 1 -type f -name "*.war" | head -n 1)
+
+          if [ -z "$WAR_FILE" ]; then
+            echo "No WAR file found in target"
+            exit 1
+          fi
+
+          echo "file=$WAR_FILE" >> "$GITHUB_OUTPUT"
+          echo "WAR file: $WAR_FILE"
 
       - name: Upload WAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: cicddemo-war
-          path: target/*.war
+          path: ${{ steps.war.outputs.file }}
           if-no-files-found: error
+
+      - name: Deploy to Tomcat
+        env:
+          TOMCAT_USERNAME: ${{ secrets.TOMCAT_USERNAME }}
+          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+          TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
+          WAR_FILE: ${{ steps.war.outputs.file }}
+        shell: bash
+        run: |
+          curl \
+            --fail-with-body \
+            --show-error \
+            --user "$TOMCAT_USERNAME:$TOMCAT_PASSWORD" \
+            --upload-file "$WAR_FILE" \
+            "$TOMCAT_URL/manager/text/deploy?path=/cicddemo-2026&update=true"
