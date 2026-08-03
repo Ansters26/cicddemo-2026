@@ -29,5 +29,5 @@ jobs:
       - name: Deploy to Tomcat
         run: |
           curl -v -u ${{ secrets.TOMCAT_USERNAME }}:${{ secrets.TOMCAT_PASSWORD }} \
-          --upload-file target/cicddemo-2026-1.war \
+          --upload-file target/cicddemo-2026.war \
           "${{ secrets.TOMCAT_URL }}/manager/text/deploy?path=/cicddemo-2026&update=true"
