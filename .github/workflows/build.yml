@@ -5,13 +5,14 @@ on:
     branches:
       - main
 
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: cicddemo-2026
 
     steps:
       - name: Checkout source
@@ -20,14 +21,24 @@ jobs:
       - name: Install Java
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: temurin
+          cache: maven
+
+      - name: Show repository files
+        run: |
+          pwd
+          ls -la
 
       - name: Build Project
-        run: mvn clean package 
+        run: mvn --batch-mode clean package
 
-      - name: Deploy to Tomcat
-        run: |
-          curl -v -u ${{ secrets.TOMCAT_USERNAME }}:${{ secrets.TOMCAT_PASSWORD }} \
-          --upload-file target/cicddemo-2026.war \
-          "${{ secrets.TOMCAT_URL }}/manager/text/deploy?path=/cicddemo-2026&update=true"
+      - name: Show generated WAR
+        run: ls -la target
+
+      - name: Upload WAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cicddemo-war
+          path: target/*.war
+          if-no-files-found: error
